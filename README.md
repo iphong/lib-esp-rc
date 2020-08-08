@@ -1,10 +1,10 @@
-# ESP RC Library
+# EspRC Library
 
 ### Usage
 
 ```c++
 
-#include "esp_rc.h"
+#include "EspRC.h"
 
 void setup() {
 
