@@ -24,16 +24,16 @@ terminals and start typing...
 #include "EspRC.h"
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(921600);
 
     EspRC.begin(1);
-	EspRC.on("$M>", [](String msg) {
+	EspRC.on("$M", [](String msg) {
 		Serial.printf("received: %s \n", msg.c_str());
 	});
 }
 void loop() {
     if (Serial.available()) {
-        EspRC.send("$M>" + Serial.readStringUntil('\n'));
+        EspRC.send("$M", Serial.readStringUntil('\n'));
     }
 }
 ```
