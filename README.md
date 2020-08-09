@@ -16,12 +16,15 @@ WiFi.disconnect();
 
 ### Examples
 
+Upload the following code onto 2 esp8266 devices, then open both serial 
+terminals and start typing...
+
 ```c++
 
 #include "EspRC.h"
 
 void setup() {
-    Serial.begin(921600);
+    Serial.begin(115200);
 
     EspRC.begin(1);
 	EspRC.on("$M>", [](String msg) {
