@@ -21,18 +21,16 @@ WiFi.disconnect();
 #include "EspRC.h"
 
 void setup() {
+    Serial.begin(921600);
 
-  EspRC.begin(1);
-  
-  EspRC.send("foo");
-  EspRC.on("foo", [](){
-    // Do somesimthing
-  });
-
-  EspRC.send("bar", "hello");
-  EspRC.on("bar", [](String data){
-    data.equals("hello");
-  });
+    EspRC.begin(1);
+	EspRC.on("$M>", [](String msg) {
+		Serial.printf("received: %s \n", msg.c_str());
+	});
 }
-
+void loop() {
+    if (Serial.available()) {
+        EspRC.send("$M>" + Serial.readStringUntil('\n'));
+    }
+}
 ```
