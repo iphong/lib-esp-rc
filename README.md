@@ -1,4 +1,6 @@
-# EspRC Library
+# EspRC Library for ESP8266
+
+ESP-NOW protocol made simple for quick & easy implementation.
 
 ### Usage
 
