@@ -14,7 +14,7 @@ WiFi.mode(WIFI_STA);
 WiFi.disconnect();
 ```
 
-### Examples
+### Basic examples
 
 Upload the following code onto 2 esp8266 devices, then open both serial 
 terminals and start typing...
@@ -37,3 +37,7 @@ void loop() {
     }
 }
 ```
+
+### Advanced examples
+
+This project pushes the ESP8266 to its limit. check it out at https://github.com/iphong/esp-visual-led
