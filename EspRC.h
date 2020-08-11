@@ -9,48 +9,81 @@
 
 #define ESP_RC_MAX_LISTENER 100
 
-typedef void (*esp_rc_cb_t)();
-typedef void (*esp_rc_str_cb_t)(String);
+typedef std::function<void()> esp_rc_cb_t;
 
 struct esp_rc_listener_t {
-	String subscribe;
-	uint8_t *sender;
+	String prefix;
 	esp_rc_cb_t callback;
-	esp_rc_str_cb_t str_callback;
 };
 
 class EspRCClass;
 
 extern EspRCClass EspRC;
 
+
+void printhex(u8 *d, u8 len) {
+    for (auto i=0; i<len; i++)
+        Serial.printf("%02X ", d[i]);
+    Serial.print('\n');
+}
+
 class EspRCClass {
 protected:
 	esp_rc_listener_t listeners[ESP_RC_MAX_LISTENER];
-	uint8_t _channel;
-	uint8_t max_listeners = 0;
-	uint8_t broadcast[6] = {
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-	};
-	uint8_t private_key[16] = {
-		0xFF, 0xFF, 0xFF, 0xFF, 
-		0xAA, 0xFF, 0x55, 0xFF,
-		0xFF, 0xFF, 0xFF, 0xFF, 
-		0xFF, 0xFF, 0x22, 0xFF
-	};
-	uint8_t *_sender;
-	String _msgBuffer;
+	u8 _channel;
+	u8 max_listeners = 0;
+	u8 broadcast[6] ={0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+	u8 *_sender;
+	u8 *_data;
+	u8  _size;
+	u32 _sentTime;
+	bool _isSending = false;
 
 public:
-	uint8_t getChannel() {
+	static bool equals(u8 *a, u8* b, u8 size, u8 offset = 0) {
+		for (auto i=offset; i<offset+size; i++) {
+			if (a[i] != b[i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	u8 getChannel() {
 		return _channel;
 	}
-	uint8_t * getSender() {
+	u8 * getSender() {
 		return _sender;
 	}
-	uint8_t setChannel(uint8_t channel) {
-		return _channel = channel;
+	String getValue() {
+		String d = "";
+		for (auto i=0; i<_size; i++) d.concat((const char)_data[i]);
+		return d;
 	}
-	void begin(uint8_t channel = 1) {
+	void send(String data, u8* receiver = EspRC.broadcast) {
+		if (_isSending) return;
+		data = String((const char)EspRC.getChannel() + data);
+		esp_now_send(receiver, (u8*)data.c_str(), (u8)data.length());
+		_isSending = true;
+		_sentTime = micros();
+	}
+	void send(String data, String value) {
+		send(data + value);
+	}
+	void send(String data, double value) {
+		send(data + String(value));
+	}
+	void on(String prefix, esp_rc_cb_t callback) {
+		listeners[max_listeners++] ={
+			prefix,
+			callback
+		};
+	}
+	void end() {
+		esp_now_del_peer(broadcast);
+		esp_now_unregister_recv_cb();
+		esp_now_deinit();
+	}
+	void begin(u8 channel = 1) {
 		_channel = channel;
 		if (WiFi.getMode() == WIFI_OFF) {
 			WiFi.mode(WIFI_STA);
@@ -60,57 +93,32 @@ public:
 			if (esp_now_is_peer_exist(EspRC.broadcast))
 				esp_now_del_peer(EspRC.broadcast);
 			esp_now_add_peer(EspRC.broadcast, ESP_NOW_ROLE_COMBO, 0, 0, 0);
-			esp_now_register_recv_cb([](uint8_t *mac, uint8_t *payload, uint8_t size) {
-				// First byte is channel ID range from 0-255
-				// Only handle message sent to the correct channel
-				if (payload[0] == EspRC.getChannel()) {
-					EspRC._msgBuffer = "";
-					EspRC._sender = mac;
-					for (auto i = 1; i < size; i++)
-						EspRC._msgBuffer.concat((const char) payload[i]);
-					EspRC.handle(EspRC._msgBuffer);
-				}
+
+			esp_now_register_send_cb([](u8 *receiver, u8 err) {
+				EspRC._isSending = false;
+				Serial.println(micros() - EspRC._sentTime);
 			});
+			esp_now_register_recv_cb([](u8 *sender, u8 *data, u8 size) {
+				if (data[0] == EspRC.getChannel()) {
+					for (auto i = 0; i < EspRC.max_listeners; i++) {
+						esp_rc_listener_t listener = EspRC.listeners[i];
+						u8 *prefix = (u8*)listener.prefix.c_str();
+						u8 len = listener.prefix.length();
+						data++;
+						size--;
+						if (EspRC.equals(prefix, data, len)) {
+							if (listener.callback) {
+								EspRC._data = data + len;
+								EspRC._size = size - len;
+								listener.callback();
+							}
+						}
+					}
+				}
+				});
 		}
 	}
-	void end() {
-		esp_now_del_peer(broadcast);
-		esp_now_unregister_recv_cb();
-		esp_now_deinit();
-	}
-	void handle(String msg) {
-		for (auto i = 0; i < max_listeners; i++) {
-			esp_rc_listener_t listener = EspRC.listeners[i];
-			if (msg.startsWith(listener.subscribe)) {
-				if (listener.callback) {
-					listener.callback();
-				}
-				if (listener.str_callback) {
-					listener.str_callback((String)msg.substring(listener.subscribe.length(), msg.length()));
-				}
-			}
-		}
-	}
-	void send(String payload) {
-		payload = (char)EspRC.getChannel() + payload;
-		esp_now_send(EspRC.broadcast, (uint8_t *) payload.c_str(), (uint8_t) payload.length());
-	}
 
-	void send(String payload, String value) {
-		send(payload + String(value));
-	}
-
-	void send(String payload, double value) {
-		send(payload + String(value));
-	}
-
-	void on(String subscribe, esp_rc_cb_t callback, uint8_t * sender = NULL) {
-		EspRC.listeners[max_listeners++] = {subscribe, sender, callback, NULL};
-	}
-
-	void on(String subscribe, esp_rc_str_cb_t callback, uint8_t * sender = NULL) {
-		EspRC.listeners[max_listeners++] = {subscribe, sender, NULL, callback};
-	}
 } EspRC;
 
 #endif //__ESP_RC_H__
