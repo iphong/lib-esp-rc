@@ -1,14 +1,44 @@
 #include "Arduino.h"
 #include "Stream.h"
 
+typedef void (*TransportReceiveCallback)(uint8_t *data, uint8_t size);
+
+class Transport
+{
+public:
+    virtual void begin();
+    virtual void end();
+    virtual void send(uint8_t *data, uint8_t size);
+    virtual void receive(TransportReceiveCallback *fn);
+
+protected:
+    TransportReceiveCallback *_onReceive;
+};
+
+class SerialTransport: public Transport {
+    void send(uint8_t *data, uint8_t size) {
+
+    }
+};
+class LoraTransport : public Transport
+{
+    void send(uint8_t *data, uint8_t size)
+    {
+    }
+};
+                
+Transport *transport = new SerialTransport;
+
 class RcProtocol;
 
-class RcTransport {
+class RcTransport
+{
 protected:
     RcProtocol *_protocol;
-public:
-    RcTransport(RcProtocol *p): _protocol(p) {
 
+public:
+    RcTransport(RcProtocol *p) : _protocol(p)
+    {
     }
     virtual void begin();
     virtual void send();
@@ -27,48 +57,59 @@ protected:
     RcTransport *_transport;
 
 public:
-    RcProtocol() {
+    RcProtocol()
+    {
         memset(_buffer, 0xff, 250);
     }
-    void begin() {
+    void begin()
+    {
         _transport = new RcTransport(this);
     }
-    size_t write(uint8_t c) {
+    size_t write(uint8_t c)
+    {
         _buffer[_length++] = c;
         return 1;
     }
-    void decode() {
-        if (!_length) return;
+    void decode()
+    {
+        if (!_length)
+            return;
         Serial.println("decode");
         Serial.printf(" %u %u \n", _length, _buffer[0]);
-        if (!synced && syncWord != _buffer[0]) return;
+        if (!synced && syncWord != _buffer[0])
+            return;
         Serial.println("synced");
-        if (_length >= 2) {
+        if (_length >= 2)
+        {
             uint8_t size = _buffer[1];
             Serial.printf("has size %u \n", size);
-            if (_length >= size + 3) {
+            if (_length >= size + 3)
+            {
                 uint8_t crc = _buffer[size + 3];
                 uint8_t sum = checksum(&_buffer[2], size - 1);
                 Serial.printf("has size %02X %02X \n", crc, sum);
-                if (sum == crc) {
+                if (sum == crc)
+                {
                     _length = 0;
-
                 }
             }
         }
     }
-    void encode(uint8_t *data, uint8_t size) {
+    void encode(uint8_t *data, uint8_t size)
+    {
         uint8_t sum = 0xff;
         uint8_t payload[size + 3];
         payload[0] = syncWord;
         payload[1] = size + 1;
-        for (auto i=0; i<size; i++) {
+        for (auto i = 0; i < size; i++)
+        {
             sum += data[i];
-            payload[i+2] = data[i];
+            payload[i + 2] = data[i];
         }
         payload[size + 2] = sum;
 
-        for (auto i=0; i<size+3; i++) {
+        for (auto i = 0; i < size + 3; i++)
+        {
             Serial.printf("%02X\t", payload[i]);
             write(payload[i]);
         }
@@ -76,9 +117,11 @@ public:
 
         decode();
     }
-    uint8_t checksum(uint8_t *data, uint8_t size) {
+    uint8_t checksum(uint8_t *data, uint8_t size)
+    {
         uint8_t sum = 0xff;
-        for (int i=0; i<size; i++) {
+        for (int i = 0; i < size; i++)
+        {
             sum += data[i];
         }
         return sum;
