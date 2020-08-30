@@ -48,6 +48,13 @@ namespace MeshRC {
 	void all(esp_rc_callback_t callback) {
 		return on("", callback);
 	}
+	void wait() {
+		while (MeshRC::sending) yield(); // Wait while sending
+	}
+	void delayMs(u32 time) {
+		u32 delayUntil = millis() + time;
+		while (millis() < delayUntil) yield();
+	}
 	bool equals(u8 *a, u8 *b, u8 size, u8 offset = 0) {
 		for (auto i = offset; i < offset + size; i++)
 			if (a[i] != b[i])
