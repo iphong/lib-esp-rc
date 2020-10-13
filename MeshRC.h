@@ -100,7 +100,7 @@ void begin() {
 		if (esp_now_is_peer_exist(broadcast))
 			esp_now_del_peer(broadcast);
 		esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
-		esp_now_add_peer(broadcast, ESP_NOW_ROLE_COMBO, 0, 0, 0);
+		esp_now_add_peer(broadcast, ESP_NOW_ROLE_COMBO, 1, 0, 0);
 		esp_now_register_send_cb(sendHandler);
 		esp_now_register_recv_cb(recvHandler);
 	}
