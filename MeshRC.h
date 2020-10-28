@@ -29,12 +29,15 @@ u8 *master = NULL;
 bool sending;
 
 void setMaster(u8 *addr) {
+	if (esp_now_is_peer_exist(master))
+		esp_now_del_peer(master);
 	master = addr;
+	esp_now_add_peer(master, ESP_NOW_ROLE_COMBO, 1, 0, 0);
 }
 void send(u8 *data, u8 size) {
 	sending = true;
 	sendTime = micros();
-	esp_now_send(broadcast, data, size);
+	esp_now_send(master ? master : broadcast, data, size);
 }
 void send(String data) {
 	send((u8 *)data.c_str(), data.length());
