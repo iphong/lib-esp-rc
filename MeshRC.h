@@ -27,12 +27,13 @@ u32 sendTime;
 u16 duration;
 u8 *master = NULL;
 bool sending;
+u8 psk[] = {'1','2','3','4','5','6','7','8','9','0','a','b','c','d','e','f'};
 
 void setMaster(u8 *addr) {
 	if (esp_now_is_peer_exist(master))
 		esp_now_del_peer(master);
 	master = addr;
-	esp_now_add_peer(master, ESP_NOW_ROLE_COMBO, 1, 0, 0);
+	esp_now_add_peer(master, ESP_NOW_ROLE_COMBO, 1, psk, sizeof(psk));
 }
 void send(u8 *data, u8 size) {
 	sending = true;
@@ -100,8 +101,9 @@ esp_now_recv_cb_t recvHandler = [](u8 *addr, u8 *data, u8 size) {
 };
 void begin() {
 	if (esp_now_init() == OK) {
-		if (esp_now_is_peer_exist(broadcast))
+		if (esp_now_is_peer_exist(broadcast)) {
 			esp_now_del_peer(broadcast);
+		}
 		esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
 		esp_now_add_peer(broadcast, ESP_NOW_ROLE_COMBO, 1, 0, 0);
 		esp_now_register_send_cb(sendHandler);
