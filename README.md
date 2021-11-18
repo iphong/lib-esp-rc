@@ -21,20 +21,20 @@ terminals and start typing...
 
 ```c++
 
-#include "EspRC.h"
+#include "MeshRC.h"
 
 void setup() {
     	Serial.begin(921600);
 
-    	EspRC.begin(1);
-	EspRC.on("message", []() {
-		String msg = EspRC.getValue();
+    	MeshRC.begin(1);
+		MeshRC.on("message", []() {
+		String msg = MeshRC.getValue();
 		Serial.printf("received: %s \n", msg.c_str());
 	});
 }
 void loop() {
 	if (Serial.available()) {
-		EspRC.send("message", Serial.readStringUntil('\n'));
+		MeshRC.send("message", Serial.readStringUntil('\n'));
 	}
 }
 ```
